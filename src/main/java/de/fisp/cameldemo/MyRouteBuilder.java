@@ -16,18 +16,17 @@
  */
 package de.fisp.cameldemo;
 
-import org.apache.camel.Endpoint;
-import org.apache.camel.Message;
+import org.apache.camel.AsyncCallback;
+import org.apache.camel.AsyncProcessor;
+import org.apache.camel.Exchange;
+import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.direct.DirectComponent;
-import org.apache.camel.component.direct.DirectEndpoint;
 import org.apache.camel.main.Main;
 import org.apache.camel.model.rest.RestBindingMode;
+import org.apache.camel.processor.ThroughputLogger;
 import org.apache.camel.processor.interceptor.DefaultTraceFormatter;
 import org.apache.camel.processor.interceptor.Tracer;
-import org.apache.camel.rx.ReactiveCamel;
-import rx.Observable;
-import rx.Subscription;
+import org.apache.camel.util.CamelLogger;
 
 /**
  * A Camel Router
@@ -48,7 +47,7 @@ public class MyRouteBuilder extends RouteBuilder {
 
     public void configure() {
 
-        configureTracer();
+//        configureTracer();
 
         // TODO create Camel routes here.
 
@@ -66,22 +65,55 @@ public class MyRouteBuilder extends RouteBuilder {
         restConfiguration().component("restlet").host("localhost").port(8082).bindingMode(RestBindingMode.auto);
 
         rest("/users/")
-                .id("Route REST")
+                .id("REST ENDPOINT")
                 .post().type(UserPojo.class)
+                .to("direct:send-off");
+//                .to("direct:rest-in");
+
+        ProducerTemplate template = getContext().createProducerTemplate();
+
+        from("direct:send-off")
+                .to("log:THROUGHPUT?level=INFO&groupSize=20")
+                .process(new AsyncProcessor() {
+                    @Override
+                    public boolean process(Exchange exchange, AsyncCallback asyncCallback) {
+                        template.asyncSend("seda:seda-rest-in", exchange);
+                        return true;
+                    }
+
+                    @Override
+                    public void process(Exchange exchange) throws Exception {
+                        throw new RuntimeException("Unexpected use of synchronous API");
+                    }
+                });
+
+        from("seda:seda-rest-in?concurrentConsumers=8")
+                .id("SEDA-REST-IN")
+                .bean(new SomeBean())
+                .to("log:THROUGHPUT-AFTER-SEDA?level=INFO&groupSize=10")
                 .to("direct:newUser");
-//                .to("log:UserPojo?level=INFO&showAll=true&multiline=false");
+
+        from("direct:rest-in")
+                .id("REST-IN")
+                .bean(new SomeBean())
+                .to("direct:newUser");
 
         from("direct:newUser")
-                .id("Route NewUserBean")
-                .bean(new NewUserBean()).tracing();
+                .id("NEWUSERBEAN")
+                .bean(new NewUserBean())
+                .to("log:THROUGHPUT-NEWUSERBEAN?level=INFO&groupSize=10");
 
+/*
         from("direct:traced")
-                .process(new MyTraceMessageProcessor())
-                .to("direct:rx");
+                .process(new MyTraceMessageProcessor());
+*/
+//                .to("direct:rx");
 
+/*
         ReactiveCamel rx = new ReactiveCamel(getContext());
         Observable<Message> observable = rx.toObservable("direct:rx");
         Subscription subscription = observable.filter(message -> message.getBody().toString().contains("direct")).subscribe(message -> System.out.println("RX " + message.getBody()));
+*/
     }
 
     private void configureTracer() {
@@ -104,7 +136,7 @@ public class MyRouteBuilder extends RouteBuilder {
 
         tracer.setTraceOutExchanges(true);
         tracer.setEnabled(true);
-        tracer.setDestinationUri("direct:traced");
+//        tracer.setDestinationUri("direct:traced");
 
         getContext().addInterceptStrategy(tracer);
     }
