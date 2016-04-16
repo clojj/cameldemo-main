@@ -11,7 +11,7 @@ public class MyTraceMessageProcessor implements org.apache.camel.Processor {
         Object body = exchange.getIn().getBody();
         TraceEventMessage message = (TraceEventMessage) body;
 //        System.out.println("message.getPreviousNode() = " + message.getPreviousNode());
-        System.out.println("message.getTimestamp() = " + message.getTimestamp());
+//        System.out.println("message.getTimestamp() = " + message.getTimestamp());
         exchange.getOut().setBody(message.getToNode());
     }
 }

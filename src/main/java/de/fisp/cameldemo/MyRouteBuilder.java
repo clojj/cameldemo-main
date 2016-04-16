@@ -81,7 +81,7 @@ public class MyRouteBuilder extends RouteBuilder {
 
         ReactiveCamel rx = new ReactiveCamel(getContext());
         Observable<Message> observable = rx.toObservable("direct:rx");
-        Subscription subscription = observable.subscribe(message -> System.out.println("RX " + message.getBody()));
+        Subscription subscription = observable.filter(message -> message.getBody().toString().contains("direct")).subscribe(message -> System.out.println("RX " + message.getBody()));
     }
 
     private void configureTracer() {
@@ -95,12 +95,12 @@ public class MyRouteBuilder extends RouteBuilder {
         Tracer tracer = new Tracer();
         DefaultTraceFormatter defaultTraceFormatter = tracer.getDefaultTraceFormatter();
         defaultTraceFormatter.setShowExchangeId(true);
-        defaultTraceFormatter.setShowBody(false);
-        defaultTraceFormatter.setShowBodyType(true);
-        defaultTraceFormatter.setShowBreadCrumb(true);
-        defaultTraceFormatter.setShowNode(true);
-        defaultTraceFormatter.setShowOutBodyType(true);
-        defaultTraceFormatter.setShowOutHeaders(true);
+//        defaultTraceFormatter.setShowBody(false);
+//        defaultTraceFormatter.setShowBodyType(true);
+//        defaultTraceFormatter.setShowBreadCrumb(true);
+//        defaultTraceFormatter.setShowNode(true);
+//        defaultTraceFormatter.setShowOutBodyType(true);
+//        defaultTraceFormatter.setShowOutHeaders(true);
 
         tracer.setTraceOutExchanges(true);
         tracer.setEnabled(true);
