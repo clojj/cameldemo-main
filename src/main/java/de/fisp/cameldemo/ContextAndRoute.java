@@ -1,47 +1,18 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package de.fisp.cameldemo;
 
-import org.apache.camel.AsyncCallback;
-import org.apache.camel.AsyncProcessor;
-import org.apache.camel.Exchange;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.main.Main;
 import org.apache.camel.model.rest.RestBindingMode;
-import org.apache.camel.processor.ThroughputLogger;
 import org.apache.camel.processor.interceptor.DefaultTraceFormatter;
 import org.apache.camel.processor.interceptor.Tracer;
-import org.apache.camel.util.CamelLogger;
 
-/**
- * A Camel Router
- *
- * @version $
- */
-public class MyRouteBuilder extends RouteBuilder {
+public class ContextAndRoute extends RouteBuilder {
 
-    /**
-     * A main() so we can easily run these routing rules in our IDE
-     */
     public static void main(String... args) throws Exception {
         Main main = new Main();
 
-        main.addRouteBuilder(new MyRouteBuilder());
+        main.addRouteBuilder(new ContextAndRoute());
         main.run(args);
     }
 
@@ -51,10 +22,6 @@ public class MyRouteBuilder extends RouteBuilder {
 
         // TODO create Camel routes here.
 
-        // here is a sample which processes the input files
-        // (leaving them in place - see the 'noop' flag)
-        // then performs content based routing on the message
-        // using XPath
 /*
         from("file:src/data?noop=true").
             choice().
@@ -74,18 +41,7 @@ public class MyRouteBuilder extends RouteBuilder {
 
         from("direct:send-off")
                 .to("log:THROUGHPUT?level=INFO&groupSize=20")
-                .process(new AsyncProcessor() {
-                    @Override
-                    public boolean process(Exchange exchange, AsyncCallback asyncCallback) {
-                        template.asyncSend("seda:seda-rest-in", exchange);
-                        return true;
-                    }
-
-                    @Override
-                    public void process(Exchange exchange) throws Exception {
-                        throw new RuntimeException("Unexpected use of synchronous API");
-                    }
-                });
+                .process(new DemoProcessor(template));
 
         from("seda:seda-rest-in?concurrentConsumers=8")
                 .id("SEDA-REST-IN")
@@ -140,4 +96,5 @@ public class MyRouteBuilder extends RouteBuilder {
 
         getContext().addInterceptStrategy(tracer);
     }
+
 }
